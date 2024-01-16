@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Script Executor</title>
+</head>
+<body>
+    <h1>Python Script Executor</h1>
+
+    <form action="/run_script1" method="get">
+        <button type="submit">Run Script 1</button>
+    </form>
+
+    <form action="/run_script2" method="get">
+        <button type="submit">Run Script 2</button>
+    </form>
+</body>
+</html>

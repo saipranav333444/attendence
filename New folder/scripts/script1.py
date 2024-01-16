@@ -1,0 +1,123 @@
+import cv2
+import numpy as np
+from openpyxl import Workbook
+from datetime import date
+import os
+
+def load_known_faces(folder_path):
+    known_face_encodings = []
+    known_face_names = []
+
+    for file_name in os.listdir(folder_path):
+        if file_name.endswith(('.jpg', '.png', '.jpeg')):
+            name = os.path.splitext(file_name)[0]
+            image_path = os.path.join(folder_path, file_name)
+            face_image = cv2.imread(image_path)
+            # Dummy face encoding (replace with actual encoding method)
+            face_encoding = np.array([0.2, 0.3, 0.4])
+            
+            known_face_encodings.append(face_encoding)
+            known_face_names.append(name)
+
+    return known_face_encodings, known_face_names
+
+# Specify the path to the folder containing known face images
+known_faces_folder = 'C:/Users/DELL/Desktop/New folder/images'
+
+# Load known faces
+known_face_encodings, known_face_names = load_known_faces(known_faces_folder)
+
+# Load the Haarcascades face detection classifier
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+
+# Initialize some variables
+face_names = []
+already_attendance_taken = set()
+
+# Open or create workbook and sheet
+wb_path = 'C:/Users/DELL/Desktop/New folder/attendance_excel'
+wb = Workbook()
+sheet1 = wb.active
+
+inp = input('Please give the current subject lecture name: ')
+sheet1.title = inp if inp else 'Sheet1'  # Set default title if no input provided
+wb_path = wb_path + inp + '.xlsx'
+sheet1['A1'] = 'Name/Date'
+sheet1['B1'] = str(date.today())
+row = 2
+col = 1
+
+# Get a reference to webcam #0 (the default one)
+video_capture = cv2.VideoCapture(0)
+
+try:
+    while True:
+        # Grab a single frame of video
+        ret, frame = video_capture.read()
+
+        # Resize frame of video to 1/4 size for faster face recognition processing
+        small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
+
+        # Convert the image from BGR color to grayscale
+        gray_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2GRAY)
+
+        # Detect faces in the frame
+        faces = face_cascade.detectMultiScale(gray_frame, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+
+        face_names = []
+        for (x, y, w, h) in faces:
+            # Extract the face region of interest
+            face_roi = gray_frame[y:y + h, x:x + w]
+
+            # Dummy face encoding (replace with actual encoding method)
+            face_encoding = np.array([0.2, 0.3, 0.4])
+
+            # See if the face is a match for the known face(s)
+            matches = [cv2.norm(face_encoding - enc) < 0.6 for enc in known_face_encodings]
+            name = "Unknown" if not any(matches) else known_face_names[matches.index(True)]
+
+            face_names.append(name)
+            if (name not in already_attendance_taken) and (name != "Unknown"):
+                sheet1.cell(row=row, column=col, value=name)
+                col += 1
+                sheet1.cell(row=row, column=col, value="Present")
+                row += 1
+                col = 1
+                print("Attendance taken")
+                already_attendance_taken.add(name)
+
+        # Display the results
+        for (x, y, w, h), name in zip(faces, face_names):
+            # Scale back up face locations
+            x *= 4
+            y *= 4
+            w *= 4
+            h *= 4
+
+            # Draw a rectangle around the face
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+
+            # Draw a label with a name below the face
+            cv2.rectangle(frame, (x, y + h + 20), (x + w, y + h), (0, 0, 255), cv2.FILLED)
+            font = cv2.FONT_HERSHEY_DUPLEX
+            cv2.putText(frame, name, (x + 6, y + h + 16), font, 0.5, (255, 255, 255), 1)
+
+        # Display the resulting image
+        cv2.imshow('Video', frame)
+
+        # Break the loop if 'q' key is pressed
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord('q'):
+            print("Data saved")
+            break
+
+except Exception as e:
+    print(f"An error occurred: {e}")
+
+finally:
+    # Save workbook to the specified path
+    wb.save(wb_path)
+
+    # Release handle to the webcam
+    video_capture.release()
+    cv2.destroyAllWindows()
